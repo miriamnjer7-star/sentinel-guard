@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentinel-Guard — Create Account</title>
+  <link rel="stylesheet" href="/css/modern.css">
+</head>
+<body class="modern">
+  <div class="shell">
+
+    <div class="brand-panel">
+      <div>
+        <p class="wordmark">Sentinel<span class="dash">-</span>Guard</p>
+        <p class="tagline">Real-Time Fraud Detection &amp; Prevention</p>
+      </div>
+
+      <div class="seal">
+        <span class="seal-text">New<br>Account<br>&middot; Demo &middot;</span>
+      </div>
+
+      <div class="ledger-line">
+        <span>Opening balance: KES 10,000</span>
+        <span>REF: SG-2026</span>
+      </div>
+    </div>
+
+    <div class="form-panel">
+      <div class="card">
+        <h2>Create your account</h2>
+        <p class="sub">Registration opens a demo account with a starting balance.</p>
+
+        <% if (error) { %><div class="error"><%= error %></div><% } %>
+
+        <form method="POST" action="/register">
+          <label>Full name</label>
+          <input type="text" name="name" required>
+          <label>Email</label>
+          <input type="email" name="email" required>
+          <label>Password</label>
+          <input type="password" name="password" required>
+          <button type="submit">Create Account</button>
+        </form>
+
+        <div class="links">
+          Already have an account? <a href="/login">Sign in</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

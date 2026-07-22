@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentinel-Guard SOC — Analyst Sign In</title>
+  <link rel="stylesheet" href="/css/modern.css">
+</head>
+<body class="modern">
+  <div class="shell">
+
+    <div class="brand-panel">
+      <div>
+        <p class="wordmark">Sentinel<span class="dash">-</span>Guard</p>
+        <p class="tagline">Security Operations Center</p>
+      </div>
+
+      <div class="seal">
+        <span class="seal-text">Analyst<br>Access<br>&middot; Restricted &middot;</span>
+      </div>
+
+      <div class="ledger-line">
+        <span>Internal use only</span>
+        <span>REF: SG-SOC</span>
+      </div>
+    </div>
+
+    <div class="form-panel">
+      <div class="card">
+        <h2>SOC sign in</h2>
+        <p class="sub">For fraud analysts reviewing flagged transactions.</p>
+
+        <% if (error) { %><div class="error"><%= error %></div><% } %>
+
+        <form method="POST" action="/soc/login">
+          <label>Email</label>
+          <input type="email" name="email" required>
+          <label>Password</label>
+          <input type="password" name="password" required>
+          <button type="submit">Log In</button>
+        </form>
+
+        <div class="links">
+          <a href="/login">Customer login</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

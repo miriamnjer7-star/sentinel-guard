@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentinel-Guard — Dashboard</title>
+  <link rel="stylesheet" href="/css/modern.css">
+</head>
+<body class="modern">
+
+  <div class="topbar">
+    <p class="wordmark">Sentinel<span class="dash">-</span>Guard</p>
+    <div class="topbar-actions">
+      <span><%= customer.name %></span>
+      <a href="/logout">Log out</a>
+    </div>
+  </div>
+
+  <div class="page">
+
+    <div class="panel balance-card">
+      <span class="balance-label">Checking balance</span>
+      <div class="balance-figure">KES <%= Number(customer.balance).toLocaleString('en-KE', {minimumFractionDigits: 2}) %></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="deposit">Deposit Money</button>
+      <button class="tab-btn" data-tab="savings">Savings Account</button>
+      <button class="tab-btn" data-tab="history">Transaction History</button>
+    </div>
+
+    <!-- Overview / Send Transfer -->
+    <div class="tab-panel" id="tab-overview">
+      <div class="panel">
+        <h2>Send a transfer</h2>
+        <p class="hint">Transfers are screened by the rule-based risk engine before they go through.</p>
+        <% if (errors.transfer) { %><div class="error"><%= errors.transfer %></div><% } %>
+        <form method="POST" action="/transfer" class="transfer-form">
+          <div>
+            <label>Recipient</label>
+            <input type="text" name="recipient" required>
+          </div>
+          <div>
+            <label>Amount (KES)</label>
+            <input type="number" name="amount" step="0.01" min="1" required>
+          </div>
+          <button type="submit">Send Transfer</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Recent activity</h2>
+        <% if (transactions.length === 0) { %>
+          <p class="empty-state">No transactions yet.</p>
+        <% } else { %>
+          <table class="ledger">
+            <thead><tr><th>Date</th><th>Recipient</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody>
+              <% transactions.slice(0, 5).forEach(t => { %>
+                <tr>
+                  <td><%= new Date(t.created_at).toLocaleString() %></td>
+                  <td><%= t.recipient %></td>
+                  <td class="amount">KES <%= Number(t.amount).toLocaleString('en-KE', {minimumFractionDigits: 2}) %></td>
+                  <td><span class="pill <%= t.status %>"><%= t.status %></span></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Deposit Money -->
+    <div class="tab-panel" id="tab-deposit" hidden>
+      <div class="panel">
+        <h2>Deposit money</h2>
+        <p class="hint">Simulates a cash, cheque, or bank-transfer deposit into your checking account.</p>
+        <% if (errors.deposit) { %><div class="error"><%= errors.deposit %></div><% } %>
+        <form method="POST" action="/deposit" class="transfer-form">
+          <div>
+            <label>Amount (KES)</label>
+            <input type="number" name="amount" step="0.01" min="1" required>
+          </div>
+          <div>
+            <label>Method</label>
+            <select name="method">
+              <option value="cash">Cash</option>
+              <option value="cheque">Cheque</option>
+              <option value="bank_transfer">Bank transfer</option>
+            </select>
+          </div>
+          <button type="submit">Deposit</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Deposit history</h2>
+        <% if (deposits.length === 0) { %>
+          <p class="empty-state">No deposits yet.</p>
+        <% } else { %>
+          <table class="ledger">
+            <thead><tr><th>Date</th><th>Method</th><th>Amount</th></tr></thead>
+            <tbody>
+              <% deposits.forEach(d => { %>
+                <tr>
+                  <td><%= new Date(d.created_at).toLocaleString() %></td>
+                  <td><%= d.method.replace('_', ' ') %></td>
+                  <td class="amount">KES <%= Number(d.amount).toLocaleString('en-KE', {minimumFractionDigits: 2}) %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Savings Account -->
+    <div class="tab-panel" id="tab-savings" hidden>
+      <div class="panel">
+        <h2>Move money</h2>
+        <p class="hint">Move funds between your checking and savings balance. Internal moves aren't screened by the risk engine.</p>
+        <% if (errors.savings) { %><div class="error"><%= errors.savings %></div><% } %>
+        <form method="POST" action="/savings-transfer" class="transfer-form">
+          <div>
+            <label>Direction</label>
+            <select name="direction">
+              <option value="to_savings">Checking &rarr; Savings</option>
+              <option value="to_checking">Savings &rarr; Checking</option>
+            </select>
+          </div>
+          <div>
+            <label>Amount (KES)</label>
+            <input type="number" name="amount" step="0.01" min="1" required>
+          </div>
+          <button type="submit">Move Funds</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Savings activity</h2>
+        <% if (savingsHistory.length === 0) { %>
+          <p class="empty-state">No savings activity yet.</p>
+        <% } else { %>
+          <table class="ledger">
+            <thead><tr><th>Date</th><th>Direction</th><th>Amount</th></tr></thead>
+            <tbody>
+              <% savingsHistory.forEach(s => { %>
+                <tr>
+                  <td><%= new Date(s.created_at).toLocaleString() %></td>
+                  <td><%= s.direction === 'to_savings' ? 'Checking → Savings' : 'Savings → Checking' %></td>
+                  <td class="amount">KES <%= Number(s.amount).toLocaleString('en-KE', {minimumFractionDigits: 2}) %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Full Transaction History -->
+    <div class="tab-panel" id="tab-history" hidden>
+      <div class="panel">
+        <h2>Full transaction history</h2>
+        <% if (transactions.length === 0) { %>
+          <p class="empty-state">No transactions yet.</p>
+        <% } else { %>
+          <table class="ledger">
+            <thead><tr><th>Date</th><th>Recipient</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody>
+              <% transactions.forEach(t => { %>
+                <tr>
+                  <td><%= new Date(t.created_at).toLocaleString() %></td>
+                  <td><%= t.recipient %></td>
+                  <td class="amount">KES <%= Number(t.amount).toLocaleString('en-KE', {minimumFractionDigits: 2}) %></td>
+                  <td><span class="pill <%= t.status %>"><%= t.status %></span></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } %>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Plain client-side tab switching - no framework, just show/hide.
+    (function () {
+      const buttons = document.querySelectorAll('.tab-btn');
+      const panels = document.querySelectorAll('.tab-panel');
+      const initial = <%- JSON.stringify(activeTab) %>;
+
+      function activate(tab) {
+        buttons.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+        panels.forEach(p => p.hidden = p.id !== 'tab-' + tab);
+      }
+
+      buttons.forEach(b => b.addEventListener('click', () => activate(b.dataset.tab)));
+      activate(document.getElementById('tab-' + initial) ? initial : 'overview');
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentinel-Guard SOC — Flagged Queue</title>
+  <link rel="stylesheet" href="/css/modern.css">
+</head>
+<body class="modern">
+
+  <div class="topbar">
+    <p class="wordmark">Sentinel<span class="dash">-</span>Guard <span style="color:var(--mist); font-size:0.8rem; font-family:'IBM Plex Mono',monospace;">/ SOC</span></p>
+    <div class="topbar-actions">
+      <a href="/soc/logout">Log out</a>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="panel">
+      <h2>Flagged transaction queue</h2>
+      <p class="sub" style="color:var(--mist); font-size:0.85rem; margin-top:4px;">Transactions the rule-based risk engine flagged for review.</p>
+
+      <% if (alerts.length === 0) { %>
+        <p class="empty-state">No flagged transactions right now.</p>
+      <% } else { %>
+        <table class="ledger">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Recipient</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% alerts.forEach(a => { %>
+              <tr>
+                <td><%= new Date(a.created_at).toLocaleString() %></td>
+                <td><%= a.customer_name %></td>
+                <td><%= a.recipient %></td>
+                <td class="amount">KES <%= Number(a.amount).toLocaleString('en-KE', {minimumFractionDigits: 2}) %></td>
+                <td>
+                  <% if (!a.resolution) { %>
+                    <span class="pill flagged">pending</span>
+                  <% } else { %>
+                    <span class="pill resolved"><%= a.resolution.replace('_',' ') %></span>
+                  <% } %>
+                </td>
+                <td>
+                  <% if (!a.resolution) { %>
+                    <form method="POST" action="/soc/resolve" class="resolve-actions">
+                      <input type="hidden" name="alert_id" value="<%= a.alert_id %>">
+                      <button type="submit" name="resolution" value="confirmed_fraud" class="btn-fraud">Confirm fraud</button>
+                      <button type="submit" name="resolution" value="false_positive" class="btn-clear">False positive</button>
+                    </form>
+                  <% } else { %>
+                    &mdash;
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+  </div>
+</body>
+</html>

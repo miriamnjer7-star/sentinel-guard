@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentinel-Guard — Secure Sign In</title>
+  <link rel="stylesheet" href="/css/modern.css">
+</head>
+<body class="modern">
+  <div class="shell">
+
+    <div class="brand-panel">
+      <div>
+        <p class="wordmark">Sentinel<span class="dash">-</span>Guard</p>
+        <p class="tagline">Real-Time Fraud Detection &amp; Prevention</p>
+      </div>
+
+      <div class="seal">
+        <span class="seal-text">Secure<br>Session<br>&middot; Verified &middot;</span>
+      </div>
+
+      <div class="ledger-line">
+        <span>AES-256 &middot; PCI-DSS</span>
+        <span>REF: SG-2026</span>
+      </div>
+    </div>
+
+    <div class="form-panel">
+      <div class="card">
+        <h2>Sign in</h2>
+        <p class="sub">Access your account to review balances and transfers.</p>
+
+        <% if (error) { %><div class="error"><%= error %></div><% } %>
+
+        <form method="POST" action="/login">
+          <label>Email</label>
+          <input type="email" name="email" required>
+          <label>Password</label>
+          <input type="password" name="password" required>
+          <button type="submit">Log In</button>
+        </form>
+
+        <div class="links">
+          <a href="/register">Create an account</a> &middot;
+          <a href="/soc/login">SOC analyst login</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
