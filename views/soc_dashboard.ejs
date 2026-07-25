@@ -65,6 +65,37 @@
         </table>
       <% } %>
     </div>
+
+    <div class="panel" style="margin-top:24px;">
+      <h2>Flagged login attempts</h2>
+      <p class="sub" style="color:var(--mist); font-size:0.85rem; margin-top:4px;">Logins whose typing rhythm deviated significantly from the customer's baseline.</p>
+
+      <% if (keystrokeAlerts.length === 0) { %>
+        <p class="empty-state">No flagged login attempts right now.</p>
+      <% } else { %>
+        <table class="ledger">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Email</th>
+              <th>Avg Z-score</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% keystrokeAlerts.forEach(k => { %>
+              <tr>
+                <td><%= new Date(k.created_at).toLocaleString() %></td>
+                <td><%= k.customer_name %></td>
+                <td><%= k.email %></td>
+                <td class="amount"><%= Number(k.avg_z_score).toFixed(2) %></td>
+                <td><span class="pill flagged">flagged</span></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
   </div>
 </body>
-</html>

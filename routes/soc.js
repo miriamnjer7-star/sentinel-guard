@@ -21,8 +21,8 @@ router.post('/soc/login', async (req, res) => {
   res.render('soc_login', { error: 'Incorrect email or password.' });
 });
 
-// GET /soc/dashboard - single queue of flagged transactions (4.1.4).
-// No separate case-detail page in this simplified build, same as the PHP version.
+// GET /soc/dashboard - queue of flagged transactions plus flagged
+// keystroke-dynamics login attempts (4.1.4).
 router.get('/soc/dashboard', requireAnalyst, async (req, res) => {
   const [alerts] = await pool.query(
     `SELECT a.alert_id, a.resolution, t.transaction_id, t.recipient, t.amount, t.created_at,
@@ -32,7 +32,16 @@ router.get('/soc/dashboard', requireAnalyst, async (req, res) => {
      JOIN customers c ON t.customer_id = c.customer_id
      ORDER BY a.created_at DESC`
   );
-  res.render('soc_dashboard', { alerts });
+
+  const [keystrokeAlerts] = await pool.query(
+    `SELECT k.attempt_id, k.avg_z_score, k.created_at, c.name AS customer_name, c.email
+     FROM keystroke_attempts k
+     JOIN customers c ON k.customer_id = c.customer_id
+     WHERE k.flagged = TRUE
+     ORDER BY k.created_at DESC`
+  );
+
+  res.render('soc_dashboard', { alerts, keystrokeAlerts });
 });
 
 // POST /soc/resolve - analyst marks a case confirmed fraud or false positive (4.3.3)
