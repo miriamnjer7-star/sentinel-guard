@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { requireCustomer } = require('../middleware/auth');
+const ml = require('../lib/transaction_ml');
 
 // GET /dashboard - checking balance, tabbed sections (4.1.3)
 router.get('/dashboard', requireCustomer, async (req, res) => {
@@ -58,6 +59,12 @@ router.get('/dashboard', requireCustomer, async (req, res) => {
 // approved transaction size, or over a fixed ceiling of KES 50,000.
 // Same transparent, explainable rule as the PHP version - not a trained
 // machine-learning model, which is out of scope for this project's timeframe.
+//
+// As of this version, a second, independent signal runs alongside the fixed
+// rule: unsupervised anomaly detection (lib/transaction_ml.js), which learns
+// each customer's normal transaction pattern from their own history rather
+// than a hard-coded threshold. Either signal flagging a transfer is enough
+// to route it to SOC review.
 router.post('/transfer', requireCustomer, async (req, res) => {
   const { recipient, amount } = req.body;
   const customerId = req.session.customer_id;
@@ -73,19 +80,77 @@ router.post('/transfer', requireCustomer, async (req, res) => {
     [customerId]
   );
 
-  let isSuspicious = false;
+  let ruleFlagged = false;
   if (avg_amount && numericAmount > avg_amount * 3) {
-    isSuspicious = true;
+    ruleFlagged = true;
   } else if (numericAmount > 50000) {
-    isSuspicious = true;
+    ruleFlagged = true;
   }
 
+  // --- Transaction anomaly detection (unsupervised ML signal) ---
+  const [[customer]] = await pool.query('SELECT balance FROM customers WHERE customer_id = ?', [customerId]);
+  const [[recipientSeen]] = await pool.query(
+    `SELECT 1 AS seen FROM transactions WHERE customer_id = ? AND recipient = ? AND status = 'approved' LIMIT 1`,
+    [customerId, recipient]
+  );
+  const [[lastTransfer]] = await pool.query(
+    'SELECT MAX(created_at) AS last_at FROM transactions WHERE customer_id = ?',
+    [customerId]
+  );
+
+  const hoursSinceLastTransfer = lastTransfer.last_at
+    ? (Date.now() - new Date(lastTransfer.last_at).getTime()) / 3600000
+    : 720; // no prior transfers - treat as "long time since last activity"
+
+  const features = ml.buildFeatureVector({
+    amount: numericAmount,
+    hourOfDay: new Date().getHours(),
+    isNewRecipient: !recipientSeen,
+    hoursSinceLastTransfer,
+    amountToBalanceRatio: numericAmount / (Number(customer.balance) || 1)
+  });
+
+  let [txProfileRow] = await pool.query('SELECT * FROM transaction_profiles WHERE customer_id = ?', [customerId]);
+  let txProfile = txProfileRow[0]
+    ? { sample_count: txProfileRow[0].sample_count, mean_json: txProfileRow[0].mean_json, m2_json: txProfileRow[0].m2_json, enrolled: !!txProfileRow[0].enrolled }
+    : ml.blankProfile();
+
+  let mlFlagged = false;
+  let mlScore = 0;
+  if (txProfile.enrolled) {
+    const result = ml.scoreAttempt(txProfile, features);
+    mlFlagged = result.flagged;
+    mlScore = result.avgZ;
+  }
+
+  const isSuspicious = ruleFlagged || mlFlagged;
   const status = isSuspicious ? 'flagged' : 'approved';
 
   const [result] = await pool.query(
     'INSERT INTO transactions (customer_id, recipient, amount, status) VALUES (?, ?, ?, ?)',
     [customerId, recipient, numericAmount, status]
   );
+
+  // Log the anomaly score for review, and only fold this transfer into the
+  // baseline if it was approved - training on flagged transfers would let
+  // anomalies pull the "normal" baseline toward themselves over time.
+  await pool.query(
+    `INSERT INTO transaction_anomaly_scores (transaction_id, customer_id, features_json, avg_z_score, flagged)
+     VALUES (?, ?, ?, ?, ?)`,
+    [result.insertId, customerId, JSON.stringify(features), mlScore, mlFlagged]
+  );
+  if (status === 'approved') {
+    const updated = ml.updateBaseline(txProfile, features);
+    await pool.query(
+      `INSERT INTO transaction_profiles (customer_id, sample_count, mean_json, m2_json, enrolled)
+       VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE sample_count = ?, mean_json = ?, m2_json = ?, enrolled = ?`,
+      [
+        customerId, updated.sample_count, JSON.stringify(updated.mean_json), JSON.stringify(updated.m2_json), updated.enrolled,
+        updated.sample_count, JSON.stringify(updated.mean_json), JSON.stringify(updated.m2_json), updated.enrolled
+      ]
+    );
+  }
 
   if (status === 'approved') {
     // Balance only moves for approved transfers - a flagged one leaves the
